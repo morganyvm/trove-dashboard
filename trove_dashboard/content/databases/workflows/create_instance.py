@@ -26,6 +26,8 @@ from openstack_dashboard.dashboards.project.instances \
 from oslo_log import log as logging
 
 from trove_dashboard import api
+from trove_dashboard.content.databases \
+    import tables as project_tables
 from trove_dashboard.utils import common as common_utils
 
 LOG = logging.getLogger(__name__)
@@ -291,9 +293,11 @@ class SetInstanceDetailsAction(workflows.Action):
                 attr_key: _("Flavor")
             }))
         valid_flavors = self.datastore_flavors(request,
+        
                                                datastore,
                                                datastore_version)
         if valid_flavors:
+            valid_flavors = ([("", _(" - "))] + valid_flavors)
             self.fields[field_name].choices = instance_utils.sort_flavor_list(
                 request, valid_flavors)
 
@@ -503,7 +507,7 @@ class AdvancedAction(workflows.Action):
         try:
             instances = self._get_instances()
             choices = sorted([(i.id, i.name) for i in
-                             instances if i.status == 'HEALTHY'],
+                             instances if i.status in project_tables.ACTIVE_STATES],
                              key=lambda i: i[1])
         except Exception:
             choices = []
@@ -667,9 +671,9 @@ class LaunchInstance(workflows.Workflow):
                      "backups=%s, nics=%s, replica_of=%s replica_count=%s, "
                      "configuration=%s, locality=%s, "
                      "availability_zone=%s}",
-                     context['name'], context['volume'],
-                     self._get_volume_type(context), context['flavor'],
-                     datastore, datastore_version,
+                     context['name'], context['volume'] if not context.get('master') else 0,
+                     self._get_volume_type(context), context['flavor'] if not context.get('master') else None,
+                     datastore if not context.get('master') else None, datastore_version if not context.get('master') else None,
                      self._get_databases(context),
                      self._get_backup(context), self._get_nics(context),
                      context.get('master'), context['replica_count'],
@@ -678,10 +682,10 @@ class LaunchInstance(workflows.Workflow):
 
             api.trove.instance_create(request,
                                       context['name'],
-                                      context['volume'],
-                                      context['flavor'],
-                                      datastore=datastore,
-                                      datastore_version=datastore_version,
+                                      context['volume'] if not context.get('master') else 0,
+                                      context['flavor'] if not context.get('master') else None,
+                                      datastore=datastore if not context.get('master') else None,
+                                      datastore_version=datastore_version if not context.get('master') else None,
                                       databases=self._get_databases(context),
                                       users=self._get_users(context),
                                       restore_point=self._get_backup(context),
