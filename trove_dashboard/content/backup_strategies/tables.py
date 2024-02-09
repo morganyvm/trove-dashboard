@@ -46,7 +46,11 @@ class DeleteBackupStrategy(tables.DeleteAction):
         )
 
     def delete(self, request, obj_id):
-        api.trove.backup_strategy_delete(request, project_id=obj_id)
+        values = obj_id.split('_')
+        # TODO: needs to implements validation 
+        project_id = values[0].strip()
+        instance_id = values[1].strip()
+        api.trove.backup_strategy_delete(request, project_id=project_id, instance_id=instance_id)
 
 
 class BackupStrategiesTable(tables.DataTable):
@@ -73,4 +77,4 @@ class BackupStrategiesTable(tables.DataTable):
         return name
 
     def get_object_id(self, datum):
-        return datum.project_id + datum.instance_id
+        return datum.project_id + "_" + datum.instance_id
